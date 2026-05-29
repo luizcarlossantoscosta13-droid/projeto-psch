@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Cobrinha (Snake)</title>
+    <style>
+        body {
+            background-color: #222;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        #placar {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            border: 4px solid #fff;
+            background-color: #111;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Jogo da Cobrinha</h1>
+    <div id="placar">Pontos: 0</div>
+    <canvas id="jogo" width="400" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById("jogo");
+        const ctx = canvas.getContext("2d");
+        const placarElemento = document.getElementById("placar");
+
+        // Tamanho de cada bloco/quadrado no jogo
+        const tamanhoBloco = 20;
+        const quantidadeBlocos = canvas.width / tamanhoBloco;
+
+        // Posição inicial da cobra
+        let cobra = [
+            { x: 10, y: 10 }
+        ];
+
+        // Posição inicial da comida
+        let comida = { x: 5, y: 5 };
+
+        // Velocidade/Direção do movimento (começa parada)
+        let dx = 0;
+        let dy = 0;
+
+        let pontos = 0;
+
+        // Loop principal do jogo (roda a cada 100 milissegundos)
+        setInterval(loopPrincipal, 100);
+
+        // Captura as teclas pressionadas pelo jogador
+        document.addEventListener("keydown", mudarDirecao);
+
+        function loopPrincipal() {
+            moverCobra();
+
+            if (verificarFimDeJogo()) {
+                reiniciarJogo();
+                return;
+            }
+
+            verificarComida();
+            desenharTudo();
+        }
+
+        function desenharTudo() {
+            // Limpa a tela
+            ctx.fillStyle = "#111";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Desenha a cobra
+            ctx.fillStyle = "#4CAF50"; // Verde
+            cobra.forEach(parte => {
+                ctx.fillRect(parte.x * tamanhoBloco, parte.y * tamanhoBloco, tamanhoBloco - 2, tamanhoBloco - 2);
+            });
+
+            // Desenha a comida
+            ctx.fillStyle = "#FF5252"; // Vermelho
+            ctx.fillRect(comida.x * tamanhoBloco, comida.y * tamanhoBloco, tamanhoBloco - 2, tamanhoBloco - 2);
+        }
+
+        function moverCobra() {
+            // Cria a nova cabeça baseada na direção atual
+            const cabeca = { x: cobra[0].x + dx, y: cobra[0].y + dy };
+            cobra.unshift(cabeca); // Adiciona a nova cabeça no início
+            cobra.pop(); // Remove a cauda (mantém o tamanho se não comer)
+        }
+
+        function mudarDirecao(evento) {
+            const TECO_ESQUERDA = 37;
+            const TECO_CIMA = 38;
+            const TECO_DIREITA = 39;
+            const TECO_BAIXO = 40;
+
+            const teclaPressionada = evento.keyCode;
+
+            // Evita que a cobra volte pelo próprio corpo (ex: ir para a esquerda enquanto anda para a direita)
+            const indoParaCima = (dy === -1);
+            const indoParaBaixo = (dy === 1);
+            const indoParaDireita = (dx === 1);
+            const indoParaEsquerda = (dx === -1);
+
+            if (teclaPressionada === TECO_ESQUERDA && !indoParaDireita) {
+                dx = -1; dy = 0;
+            }
+            if (teclaPressionada === TECO_CIMA && !indoParaBaixo) {
+                dx = 0; dy = -1;
+            }
+            if (teclaPressionada === TECO_DIREITA && !indoParaEsquerda) {
+                dx = 1; dy = 0;
+            }
+            if (teclaPressionada === TECO_BAIXO && !indoParaCima) {
+                dx = 0; dy = 1;
+            }
+        }
+
+        function verificarComida() {
+            // Se a cabeça da cobra estiver na mesma posição da comida
+            if (cobra[0].x === comida.x && cobra[0].y === comida.y) {
+                pontos += 10;
+                placarElemento.innerText = "Pontos: " + pontos;
+                
+                // Faz a cobra crescer duplicando o último pedaço
+                cobra.push({ ...cobra[cobra.length - 1] }); 
+
+                gerarComida();
+            }
+        }
+
+        function gerarComida() {
+            // Gera uma posição aleatória para a comida dentro do tabuleiro
+            comida.x = Math.floor(Math.random() * quantidadeBlocos);
+            comida.y = Math.floor(Math.random() * quantidadeBlocos);
+
+            // Garante que a comida não surja em cima da cobra
+            cobra.forEach(parte => {
+                if (parte.x === comida.x && parte.y === comida.y) {
+                    gerarComida();
+                }
+            });
+        }
+
+        function verificarFimDeJogo() {
+            // Bateu nas paredes?
+            const bateuEsquerda = cobra[0].x < 0;
+            const bateuDireita = cobra[0].x >= quantidadeBlocos;
+            const bateuTopo = cobra[0].y < 0;
+            const bateuBaixo = cobra[0].y >= quantidadeBlocos;
+
+            if (bateuEsquerda || bateuDireita || bateuTopo || bateuBaixo) {
+                return true;
+            }
+
+            // Bateu no próprio corpo?
+            for (let i = 1; i < cobra.length; i++) {
+                if (cobra[i].x === cobra[0].x && cobra[i].y === cobra[0].y) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function reiniciarJogo() {
+            alert("Fim de Jogo! Sua pontuação: " + pontos);
+            cobra = [{ x: 10, y: 10 }];
+            dx = 0;
+            dy = 0;
+            pontos = 0;
+            placarElemento.innerText = "Pontos: " + pontos;
+            gerarComida();
+        }
+    </script>
+</body>
+</html>
